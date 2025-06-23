@@ -112,7 +112,6 @@ internal class DbConfigurationProvider : ConfigurationProvider, IDisposable
         try
         {
             connection.Open();
-            // 数据库类型为自定义时，不需要确认数据库是否创建
             EnsureTableExists(connection);
             LoadConfigurationData(connection);
         }
