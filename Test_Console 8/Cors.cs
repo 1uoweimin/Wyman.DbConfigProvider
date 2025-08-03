@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 namespace Test_Console_8
 {
     public record Cors
