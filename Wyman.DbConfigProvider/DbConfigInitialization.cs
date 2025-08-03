@@ -1,4 +1,6 @@
-﻿namespace Wyman.DbConfigProvider;
+﻿using System.Data;
+
+namespace Wyman.DbConfigProvider;
 
 /// <summary>
 /// 数据库类型
@@ -9,15 +11,45 @@ public enum DbType
     PostgreSQL,
     SQLServer,
     Oracle,
-    SQLite,
-    Other
+    SQLite
+}
+
+public static class DbConfigInitialization
+{
+    private static readonly SemaphoreSlim InitializationSemaphore = new(1, 1);
+
+    public static void CreateTable(string tableName,IDbConnection connection, DbType dbType)
+    {
+        connection.Open();
+        try
+        {
+            InitializationSemaphore.Wait();
+
+            using var command = connection.CreateCommand();
+            var dbConfigSql = DbConfigSqlBuilder.Create(dbType, tableName);
+
+            // 检查表是否存在
+            command.CommandText = dbConfigSql.ExistTableSql;
+            var tableExists = Convert.ToInt32(command.ExecuteScalar()) > 0;
+
+            if (!tableExists)
+            {
+                command.CommandText = dbConfigSql.CreateTableSql;
+                command.ExecuteNonQuery();
+            }
+        }
+        finally
+        {
+            InitializationSemaphore.Release();
+        }
+    }
 }
 
 internal static class DbConfigSqlBuilder
 {
-    internal static DbConfigSql Create(DbType dbType, string tableName)
+    internal static DbConfigSql2 Create(DbType dbType, string tableName)
     {
-        DbConfigSql? dbConfigSql;
+        DbConfigSql2? dbConfigSql;
         switch (dbType)
         {
             case DbType.MySql:
@@ -41,17 +73,13 @@ internal static class DbConfigSqlBuilder
         return dbConfigSql;
     }
 
-    internal abstract class DbConfigSql(string tableName)
+    internal abstract class DbConfigSql2(string tableName) : DbConfigSql(tableName)
     {
-        public string Id => "cid";
-        public string Key => "ckey";
-        public string Value => "cvalue";
         public virtual string ExistTableSql => throw new NotImplementedException($"No SQL statement has been implemented to determine whether a table named '{tableName}' exists in the database.");
         public virtual string CreateTableSql => throw new NotImplementedException($"No SQL statement has been implemented to create a table named '{tableName}' in the database.");
-        public virtual string GetTableSql => $"SELECT {Key},{Value} FROM {tableName} WHERE {Id} IN(SELECT MAX({Id}) FROM {tableName} GROUP BY {Key});";
     }
 }
-internal class MySqlDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql(tableName)
+internal class MySqlDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql2(tableName)
 {
     public override string ExistTableSql => $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE  TABLE_NAME = '{tableName}';";
     public override string CreateTableSql => $"CREATE TABLE `{tableName}` (" +
@@ -60,7 +88,7 @@ internal class MySqlDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigS
         $"`{Value}` NVARCHAR(1000) NULL," +
         $"CONSTRAINT `{tableName}` primary key (`{Id}`));";
 }
-internal class PostgreSQLDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql(tableName)
+internal class PostgreSQLDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql2(tableName)
 {
     public override string ExistTableSql => $"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '{tableName}';";
     public override string CreateTableSql => $"CREATE TABLE \"{tableName}\" (" +
@@ -68,7 +96,7 @@ internal class PostgreSQLDbConfigSql(string tableName) : DbConfigSqlBuilder.DbCo
         $"\"{Key}\" VARCHAR(255) NOT NULL, " +
         $"\"{Value}\" VARCHAR(1000) NULL);";
 }
-internal class SQLServerDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql(tableName)
+internal class SQLServerDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql2(tableName)
 {
     public override string ExistTableSql => $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}';";
     public override string CreateTableSql => $"CREATE TABLE [{tableName}] (" +
@@ -76,7 +104,7 @@ internal class SQLServerDbConfigSql(string tableName) : DbConfigSqlBuilder.DbCon
         $"[{Key}] NVARCHAR(255) NOT NULL, " +
         $"[{Value}] NVARCHAR(1000) NULL);";
 }
-internal class OracleDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql(tableName)
+internal class OracleDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql2(tableName)
 {
     public override string ExistTableSql => $"SELECT COUNT(*) FROM user_tables WHERE table_name = UPPER('{tableName}');";
     public override string CreateTableSql => $"CREATE TABLE \"{tableName}\" (" +
@@ -84,7 +112,7 @@ internal class OracleDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfig
         $"\"{Key}\" NVARCHAR2(255) NOT NULL, " +
         $"\"{Value}\" NVARCHAR2(1000) NULL)";
 }
-internal class SQLiteDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql(tableName)
+internal class SQLiteDbConfigSql(string tableName) : DbConfigSqlBuilder.DbConfigSql2(tableName)
 {
     public override string ExistTableSql => $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}';";
     public override string CreateTableSql => $"CREATE TABLE \"{tableName}\" (" +

@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="DbConfigSqlBuilder.cs" />
+    <None Include="DbConfigInitialization.cs" />
   </ItemGroup>
 
   <ItemGroup>

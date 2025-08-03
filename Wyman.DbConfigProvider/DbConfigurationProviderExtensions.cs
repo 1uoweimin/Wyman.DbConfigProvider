@@ -14,16 +14,15 @@ public static class DbConfigurationProviderExtensions
     /// </summary>
     /// <param name="builder"></param>
     /// <param name="dbConnection"></param>
-    /// <param name="dbType"></param>
     /// <param name="tableName"></param>
     /// <param name="reloadOnChange"></param>
     /// <param name="reloadInterval"></param>
-    /// <param name="logger"></param>
+    /// <param name="loggerFactory"></param>
     /// <returns></returns>
     public static IConfigurationBuilder AddDbConfiguration(this IConfigurationBuilder builder, Func<IDbConnection> dbConnection,
-        DbType dbType = DbType.Other, string tableName = "_Configs", bool reloadOnChange = false, TimeSpan? reloadInterval = null, ILoggerFactory? loggerFactory = null)
+        string tableName = "_Configs", bool reloadOnChange = false, TimeSpan? reloadInterval = null, ILoggerFactory? loggerFactory = null)
     {
-        var dbConfigOption = new DbConfigOptions(dbConnection, dbType, tableName, reloadOnChange, reloadInterval);
+        var dbConfigOption = new DbConfigOptions(dbConnection, tableName, reloadOnChange, reloadInterval);
         return builder.Add(new DbConfigurationSource(dbConfigOption, loggerFactory));
     }
 }

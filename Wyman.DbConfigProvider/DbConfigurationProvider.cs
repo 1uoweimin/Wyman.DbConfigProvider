@@ -1,7 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Data;
-using System.Text.Json;
 
 namespace Wyman.DbConfigProvider;
 
@@ -14,9 +13,7 @@ internal class DbConfigurationProvider : ConfigurationProvider, IDisposable
     private readonly ILogger<DbConfigurationProvider>? _logger;
     private readonly ReaderWriterLockSlim _lock = new();
     private readonly CancellationTokenSource _cts = new();
-    private readonly SemaphoreSlim _initializationSemaphore = new(1, 1);
     private readonly Task? _reloadTask;
-    private bool _isInitialized = false;
     private bool _disposed = false;
 
     public DbConfigurationProvider(DbConfigOptions options, ILoggerFactory? loggerFactory = null)
@@ -37,7 +34,7 @@ internal class DbConfigurationProvider : ConfigurationProvider, IDisposable
             _lock.EnterWriteLock();
             var oldData = new Dictionary<string, string?>(Data);
             Data.Clear();
-            LoadFromDatabase();
+            LoadConfigurationData();
             if (HasConfigurationChanged(oldData, Data))
             {
                 _logger?.LogInformation("Configuration changed, triggering reload");
@@ -72,7 +69,6 @@ internal class DbConfigurationProvider : ConfigurationProvider, IDisposable
         {
             _cts.Dispose();
             _lock.Dispose();
-            _initializationSemaphore.Dispose();
             _disposed = true;
         }
 
@@ -105,66 +101,14 @@ internal class DbConfigurationProvider : ConfigurationProvider, IDisposable
         }
     }
 
-    private void LoadFromDatabase()
+    private void LoadConfigurationData()
     {
         using var connection = _options.DbConnection();
+        connection.Open();
 
-        try
-        {
-            connection.Open();
-            EnsureTableExists(connection);
-            LoadConfigurationData(connection);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to load configuration from database");
-            throw;
-        }
-    }
-
-    private void EnsureTableExists(IDbConnection connection)
-    {
-        if (_isInitialized) return;
-
-        try
-        {
-            _initializationSemaphore.Wait();
-
-            // 双重检查锁定模式
-            if (_isInitialized) return;
-
-            using var command = connection.CreateCommand();
-            var dbConfigSql = DbConfigSqlBuilder.Create(_options.DbType, _options.TableName);
-
-            // 检查表是否存在
-            command.CommandText = dbConfigSql.ExistTableSql;
-            var tableExists = Convert.ToInt32(command.ExecuteScalar()) > 0;
-
-            if (!tableExists)
-            {
-                var notExistInfo = $"Configuration table does not exist, creating table: {_options.TableName}";
-
-                if (_options.DbType == DbType.Other) throw new NotImplementedException(notExistInfo);
-
-                _logger?.LogInformation(notExistInfo);
-                command.CommandText = dbConfigSql.CreateTableSql;
-                command.ExecuteNonQuery();
-            }
-
-            _isInitialized = true;
-        }
-        finally
-        {
-            _initializationSemaphore.Release();
-        }
-    }
-
-    private void LoadConfigurationData(IDbConnection connection)
-    {
         using var command = connection.CreateCommand();
-        var dbConfigSql = DbConfigSqlBuilder.Create(_options.DbType, _options.TableName);
 
-        command.CommandText = dbConfigSql.GetTableSql;
+        command.CommandText = new DbConfigSql(_options.TableName).GetTableSql;
         command.CommandTimeout = 30;
 
         using var reader = command.ExecuteReader();

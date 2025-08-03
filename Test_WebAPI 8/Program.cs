@@ -14,15 +14,15 @@ services.AddSwaggerGen();
 var serviceProvider = services.BuildServiceProvider();
 var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
 
-var dbType = DbType.SQLServer;
+var dbType = DbType.MySql;
 
 switch (dbType)
 {
     case DbType.MySql:
         var connMysql = builder.Configuration.GetConnectionString("connMysql");
+        DbConfigInitialization.CreateTable("mysql_configs", new MySqlConnection(connMysql), DbType.MySql);
         builder.Configuration.AddDbConfiguration(
             () => new MySqlConnection(connMysql),
-            DbType.MySql,
             tableName: "mysql_configs",
             reloadOnChange: true,
             loggerFactory: loggerFactory
@@ -30,9 +30,9 @@ switch (dbType)
         break;
     case DbType.SQLServer:
         var connSqlServer = builder.Configuration.GetConnectionString("connSqlServer");
+        DbConfigInitialization.CreateTable("sqlserver_configs", new MySqlConnection(connSqlServer), DbType.SQLServer);
         builder.Configuration.AddDbConfiguration(
             () => new SqlConnection(connSqlServer),
-            DbType.SQLServer,
             tableName: "sqlserver_configs",
             reloadOnChange: true,
             loggerFactory: loggerFactory
@@ -40,9 +40,9 @@ switch (dbType)
         break;
     case DbType.PostgreSQL:
         var postgresqlServer = builder.Configuration.GetConnectionString("connPostgresql");
+        DbConfigInitialization.CreateTable("pg_configs", new MySqlConnection(postgresqlServer), DbType.PostgreSQL);
         builder.Configuration.AddDbConfiguration(
             () => new NpgsqlConnection(postgresqlServer),
-            DbType.PostgreSQL,
             tableName: "pg_configs",
             reloadOnChange: true,
             loggerFactory: loggerFactory
