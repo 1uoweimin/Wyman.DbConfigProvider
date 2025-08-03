@@ -9,17 +9,18 @@ namespace Wyman.DbConfigProvider;
 /// </summary>
 internal class DbConfigurationProvider : ConfigurationProvider, IDisposable
 {
+    public static ILoggerFactory? GlobalLoggerFactory { get; set; }
+    private ILogger<DbConfigurationProvider>? _logger => GlobalLoggerFactory?.CreateLogger<DbConfigurationProvider>();
+
     private readonly DbConfigOptions _options;
-    private readonly ILogger<DbConfigurationProvider>? _logger;
     private readonly ReaderWriterLockSlim _lock = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly Task? _reloadTask;
     private bool _disposed = false;
 
-    public DbConfigurationProvider(DbConfigOptions options, ILoggerFactory? loggerFactory = null)
+    public DbConfigurationProvider(DbConfigOptions options)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _logger = loggerFactory?.CreateLogger<DbConfigurationProvider>();
 
         if (options.ReloadOnChange)
         {

@@ -11,10 +11,7 @@ services.AddControllers();
 services.AddEndpointsApiExplorer();
 services.AddSwaggerGen();
 
-var serviceProvider = services.BuildServiceProvider();
-var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-
-var dbType = DbType.PostgreSQL;
+var dbType = DbType.MySql;
 
 switch (dbType)
 {
@@ -24,8 +21,7 @@ switch (dbType)
         builder.Configuration.AddDbConfiguration(
             () => new MySqlConnection(connMysql),
             tableName: "mysql_configs",
-            reloadOnChange: true,
-            loggerFactory: loggerFactory
+            reloadOnChange: true
         );
         break;
     case DbType.SQLServer:
@@ -34,8 +30,7 @@ switch (dbType)
         builder.Configuration.AddDbConfiguration(
             () => new SqlConnection(connSqlServer),
             tableName: "sqlserver_configs",
-            reloadOnChange: true,
-            loggerFactory: loggerFactory
+            reloadOnChange: true
         );
         break;
     case DbType.PostgreSQL:
@@ -44,8 +39,7 @@ switch (dbType)
         builder.Configuration.AddDbConfiguration(
             () => new NpgsqlConnection(postgresqlServer),
             tableName: "pg_configs",
-            reloadOnChange: true,
-            loggerFactory: loggerFactory
+            reloadOnChange: true
         );
         break;
 }
@@ -61,6 +55,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseDbConfiguration();
 
 app.UseHttpsRedirection();
 

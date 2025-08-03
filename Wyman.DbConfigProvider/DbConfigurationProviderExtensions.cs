@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Data;
 
@@ -17,12 +19,21 @@ public static class DbConfigurationProviderExtensions
     /// <param name="tableName"></param>
     /// <param name="reloadOnChange"></param>
     /// <param name="reloadInterval"></param>
-    /// <param name="loggerFactory"></param>
     /// <returns></returns>
     public static IConfigurationBuilder AddDbConfiguration(this IConfigurationBuilder builder, Func<IDbConnection> dbConnection,
-        string tableName = "_Configs", bool reloadOnChange = false, TimeSpan? reloadInterval = null, ILoggerFactory? loggerFactory = null)
+        string tableName = "_Configs", bool reloadOnChange = false, TimeSpan? reloadInterval = null)
     {
         var dbConfigOption = new DbConfigOptions(dbConnection, tableName, reloadOnChange, reloadInterval);
-        return builder.Add(new DbConfigurationSource(dbConfigOption, loggerFactory));
+        return builder.Add(new DbConfigurationSource(dbConfigOption));
+    }
+
+    public static IApplicationBuilder UseDbConfiguration(this IApplicationBuilder builder)
+    {
+        // 设置数据库配置提供者的全局日志工厂
+        if (builder.ApplicationServices.GetService<ILoggerFactory>() is ILoggerFactory loggerFactory)
+        {
+            DbConfigurationProvider.GlobalLoggerFactory = loggerFactory;
+        }
+        return builder;
     }
 }
