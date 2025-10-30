@@ -20,11 +20,13 @@ public static class DbConfigurationProviderExtensions
     /// <param name="reloadOnChange"></param>
     /// <param name="reloadInterval"></param>
     /// <returns></returns>
-    public static IConfigurationBuilder AddDbConfiguration(this IConfigurationBuilder builder, Func<IDbConnection> dbConnection,
+    public static IConfigurationBuilder AddDbConfiguration(this ConfigurationManager builder, Func<IDbConnection> dbConnection,
         string tableName = "_Configs", bool reloadOnChange = false, TimeSpan? reloadInterval = null)
     {
         var dbConfigOption = new DbConfigOptions(dbConnection, tableName, reloadOnChange, reloadInterval);
-        return builder.Add(new DbConfigurationSource(dbConfigOption));
+        // 插入数据库配置源到配置构建器的最前面
+        builder.Sources.Insert(0, new DbConfigurationSource(dbConfigOption));
+        return builder;
     }
 
     public static IApplicationBuilder UseDbConfiguration(this IApplicationBuilder builder)

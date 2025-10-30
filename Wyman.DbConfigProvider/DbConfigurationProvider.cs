@@ -30,10 +30,11 @@ internal class DbConfigurationProvider : ConfigurationProvider, IDisposable
 
     public override void Load()
     {
+        base.Load();
+        var oldData = new Dictionary<string, string?>(Data);
         try
         {
             _lock.EnterWriteLock();
-            var oldData = new Dictionary<string, string?>(Data);
             Data.Clear();
             LoadConfigurationData();
             if (HasConfigurationChanged(oldData, Data))
@@ -44,6 +45,7 @@ internal class DbConfigurationProvider : ConfigurationProvider, IDisposable
         }
         catch (Exception ex)
         {
+            Data = oldData;
             _logger?.LogError(ex, "Error loading configuration from database");
             throw;
         }
