@@ -20,7 +20,7 @@ public static class DbConfigurationProviderExtensions
     /// <param name="reloadOnChange"></param>
     /// <param name="reloadInterval"></param>
     /// <returns></returns>
-    public static IConfigurationBuilder AddDbConfiguration(this ConfigurationManager builder, Func<IDbConnection> dbConnection,
+    public static IConfigurationBuilder AddDbConfiguration(this IConfigurationBuilder builder, Func<IDbConnection> dbConnection,
         string tableName = "_Configs", bool reloadOnChange = false, TimeSpan? reloadInterval = null)
     {
         var dbConfigOption = new DbConfigOptions(dbConnection, tableName, reloadOnChange, reloadInterval);
